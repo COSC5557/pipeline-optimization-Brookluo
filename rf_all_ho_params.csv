@@ -1,0 +1,2 @@
+n_estimators,max_depth,max_feature,n_comp,dim_red,scaler
+139,23,16,6,pca,pt
