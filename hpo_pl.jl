@@ -259,3 +259,11 @@ for (ho, params, name, model) in zip([rf_hohb, gb_hohb, svc_hohb],
 end
 plot!(perfplot, legend=true, xlabel="Iterations")
 savefig(perfplot, "perfplot.png")
+
+default_rf = SKLearner("RandomForestClassifier", random_state=0)
+default_gb = SKLearner("GradientBoostingClassifier", random_state=0)
+default_svc = SKLearner("SVC", random_state=0)
+Random.seed!(0)
+crossvalidate(default_rf, X_test, Y_test, "accuracy_score", nfolds=5, verbose=true)
+crossvalidate(default_gb, X_test, Y_test, "accuracy_score", nfolds=5, verbose=true)
+crossvalidate(default_svc, X_test, Y_test, "accuracy_score", nfolds=5, verbose=true)

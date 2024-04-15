@@ -31,9 +31,10 @@ The hyperparameter optimization is performed using the `Hyperopt` package using 
 
 The hyperparameters to optimize are number of estimators with range [10, 300), max tree depth [1, 30) and max number of features [1, 30). The best hyperparameters are shown in the table below.
 
-5-fold test CV mean accuracy | n_estimators | max_depth | max_features | dim reducer | n_component | scaler| 
-|---------|-------------|------------------|-------------|-------------|-------------|----------|
-|  0.5997 | 139 | 23 | 16 | PCA | 6 | PowerTransformer |
+| Category |5-fold test CV mean accuracy | n_estimators | max_depth | max_features | dim reducer | n_component | scaler| 
+|---------|-------------|------------------|-------------|-------------|-------------|----------|----------|
+| Tuned pipeline |  0.5997 | 139 | 23 | 16 | PCA | 6 | PowerTransformer |
+| Default model only | 0.6133 | 100 | None | sqrt | NA | NA | NA |
 
 ### Gradient Boosting
 
@@ -41,17 +42,20 @@ The hyperparameters to optimize are number of estimators with range [10, 500), l
 
 The best hyperparameters are shown in the table below.
 
-| 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | dim reducer | n_component | scaler|
-|---------|-------------|------------------|-------------|----------|----------|----------|
-| 0.5787 | 152 | 0.3664 | 12 | PCA | 11 | PowerTransformer |
+| Category | 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | dim reducer | n_component | scaler|
+|---------|---------|-------------|------------------|-------------|----------|----------|----------|
+| Tuned pipeline | 0.5787 | 152 | 0.3664 | 12 | PCA | 11 | PowerTransformer |
+| Default model only | 0.5616 | 100 | 0.1 | 3 | NA | NA | NA |
 
 ### Support Vector Machine
 
 The hyperparameters to optimize are C (regularization) with range [0.1, 10), kernels have these options [linear, poly, rbf, sigmoid], and gamma with range [1, 10). The performance plot for the RSHB is shown below.
 
-| 5-fold test CV mean accuracy | C | kernel | gamma | dim reducer | n_component | scaler|
-|---------|-------------|------------------|-------------|----------|----------|----------|
-|0.5589 | 7.1 | rbf | 6 | ICA | 17 | StandardScaler |
+| Category | 5-fold test CV mean accuracy | C | kernel | gamma | dim reducer | n_component | scaler|
+|---------|---------|-------------|------------------|-------------|----------|----------|----------|
+| Tuned pipeline |0.5589 | 7.1 | rbf | 6 | ICA | 17 | StandardScaler |
+| Default model only | 0.4541 | 1 | rbf | 'scale' | NA | NA | NA |
+
 
 ## Conclusion
 
@@ -65,3 +69,6 @@ The figure above shows that the random forest has the best overall performance a
 
 The figure above shows the performance (convergence) of the three models with different pipelines in the tuning process. We can observe that all three models reach
 plateau near 20 - 40 iterations before dropping, which means all models have explored regions with higher accuracy and there is a good balance between exploration and exploitation.
+
+From three tables above, we can observe that the tuned random forest pipeline's performance is slightly worse than that of the default model-only pipeline. While the performance for
+the tuned gradient boosting and SVM pipelines are better than that of the default model-only pipelines. This indicates that the hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model. The is likely due to that many hyperparameters in random forest are correlating with each other. For example, in the random forest model, max_features and max_depth are correlated with each other. The default value for max_features is `sqrt`, which is already an optimal solution for many cases. Without considering the internal correlation between each hyperparameters, the HPO process might be less effective. The gradient boosting and SVM models have more independent hyperparameters, which makes the HPO process more effective and an improvement in the accuracy.
