@@ -197,10 +197,6 @@ gb_hohb = @time @hyperopt for i = 50,
     @show HPO_gb([n_est, lr, max_depth], X_train_trans, Y_train), [n_est, lr, max_depth, n_comp, dim_red, scaler]
 end
 
-# analyzePerf(gb, "./gb/", ["accuracy", "n_estimators", "learning_rate", "max_depth"],
-#     ["random_search", "hyperband_rs", "hyperband_bo"],
-#     [hors, hohb, hohbbo], X_test_trans, Y_test)
-
 gb_params = ["accuracy", "n_estimators", "learning_rate", "max_depth", "n_comp", "dim_red", "scaler"]
 writeToCSV("./gb_hyperband_rs.csv", gb_hohb, gb_params)
 
