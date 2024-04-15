@@ -33,7 +33,7 @@ The hyperparameters to optimize are number of estimators with range [10, 300), m
 
 5-fold test CV mean accuracy | n_estimators | max_depth | max_features | dim reducer | n_component | scaler| 
 |---------|-------------|------------------|-------------|-------------|-------------|----------|
-|  0.5902 | 139 | 23 | 16 | PCA | 6 | PowerTransformer |
+|  0.5997 | 139 | 23 | 16 | PCA | 6 | PowerTransformer |
 
 ### Gradient Boosting
 
@@ -43,7 +43,7 @@ The best hyperparameters are shown in the table below.
 
 | 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | dim reducer | n_component | scaler|
 |---------|-------------|------------------|-------------|----------|----------|----------|
-| 0.5698 | 152 | 0.3664 | 12 | PCA | 11 | PowerTransformer |
+| 0.5787 | 152 | 0.3664 | 12 | PCA | 11 | PowerTransformer |
 
 ### Support Vector Machine
 
@@ -51,7 +51,7 @@ The hyperparameters to optimize are C (regularization) with range [0.1, 10), ker
 
 | 5-fold test CV mean accuracy | C | kernel | gamma | dim reducer | n_component | scaler|
 |---------|-------------|------------------|-------------|----------|----------|----------|
-|0.5521 | 7.1 | rbf | 6 | ICA | 17 | StandardScaler |
+|0.5589 | 7.1 | rbf | 6 | ICA | 17 | StandardScaler |
 
 ## Conclusion
 
@@ -60,3 +60,8 @@ The boxplot is shown below to compare the performance of the three models with d
 ![boxplot](./all_hbrs_perf_boxplot.png)
 
 The figure above shows that the random forest has the best overall performance among the three models. It has highest average accuracy but there are some outliers. The gradient boosting has the second best performance and with the similar dispersion as the random forest., and the SVM has the worst performance. The SVM model has the highest dispersion and lowest average accuracy. The results on the test dataset also agree with this trend. The pipelines for random forest and gradient boosting both reply on PCA as dimension reducer and power transformation as scaler. Among six scalers, only power transformation and standard scaler are selected and SVM with standard scaler has much higher dispersion than the other two with power transformation. This would mean that many features in the dataset are not normally distributed and the power transformation is used to transform the data to be more Gaussian-like.
+
+![perfplot](./perfplot.png)
+
+The figure above shows the performance (convergence) of the three models with different pipelines in the tuning process. We can observe that all three models reach
+plateau near 20 - 40 iterations before dropping, which means all models have explored regions with higher accuracy and there is a good balance between exploration and exploitation.

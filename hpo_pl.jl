@@ -243,14 +243,19 @@ boxplot!(p, ["SVM"], df_svm.accuracy, ylabel="Accuracy", legend=false)
 savefig(p, "all_hbrs_perf_boxplot.png")
 
 
+perfplot = plot()
 for (ho, params, name, model) in zip([rf_hohb, gb_hohb, svc_hohb],
                                 [rf_params, gb_params, svc_params],
                                 ["rf_", "gb_", "svc_"],
                                 [rf, gb, svc])
     X_train_trans, X_test_trans = preprocessing(Dict(:dim_red => dim_reds_dict[ho.minimizer[end-1]](ho.minimizer[end-2]), :scaler => scalers_dict[ho.minimizer[end]]),
                                                 X_train, Y_train)
+    Random.seed!(0)
     cv_res = crossvalidate(model(ho.minimizer[1:end-3]), X_test_trans, Y_test, "accuracy_score", nfolds=5, verbose=true)
     writeTestResult("./" * name, params, ["hyperband_rs"], [ho], [cv_res])
+    scores = [t[1] for t in ho.results]
+    # scores = scores[.!isnan.(scores)]
+    plot!(perfplot, -scores, label=name[1:end-1], ylabel="Accuracy", legend=true) 
 end
-X_train_trans, X_test_trans = preprocessing(Dict(:dim_red => dim_reds_dict[dim_red](n_comp), :scaler => scalers_dict[scaler]), X_train, Y_train)
-HPO_gb([n_est, lr, max_depth], X_train_trans, Y_train), [n_est, lr, max_depth, n_comp, dim_red, scaler]
+plot!(perfplot, legend=true, xlabel="Iterations")
+savefig(perfplot, "perfplot.png")
