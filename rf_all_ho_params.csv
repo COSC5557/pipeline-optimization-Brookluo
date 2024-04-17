@@ -1,2 +1,2 @@
-n_estimators,max_depth,max_feature,n_comp,dim_red,scaler
-139,23,16,6,pca,pt
+n_estimators,max_depth,max_feature,min_samples_split,min_samples_leaf,n_comp,dim_red,scaler
+110,22,10,9,1,9,pca,pt

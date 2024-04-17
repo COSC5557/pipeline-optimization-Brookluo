@@ -29,12 +29,12 @@ The hyperparameter optimization is performed using the `Hyperopt` package using 
 
 ### Random Forest
 
-The hyperparameters to optimize are number of estimators with range [10, 300), max tree depth [1, 30) and max number of features [1, 30). The best hyperparameters are shown in the table below.
+The hyperparameters to optimize are number of estimators with range [10, 500), max tree depth [1, 30), max number of features [1, 30), min samples split with range [2, 50) and min samples leaf range [1, 50). The best hyperparameters are shown in the table below.
 
-| Category |5-fold test CV mean accuracy | n_estimators | max_depth | max_features | dim reducer | n_component | scaler| 
-|---------|-------------|------------------|-------------|-------------|-------------|----------|----------|
-| Tuned pipeline |  0.5997 | 139 | 23 | 16 | PCA | 6 | PowerTransformer |
-| Default model only | 0.6133 | 100 | None | sqrt | NA | NA | NA |
+| Category |5-fold test CV mean accuracy | n_estimators | max_depth | max_features | min_samples_split | min_samples_leaf | dim reducer | n_component | scaler|
+|---------|-------------|------------------|-------------|-------------|-------------||-------------|-------------|----------|----------|
+| Tuned pipeline |  0.5916 | 110 | 22 | 10 | 9 | 1 | PCA | 9 | PowerTransformer |
+| Default model only | 0.6133 | 100 | None | sqrt | None | 0.0 | NA | NA | NA |
 
 ### Gradient Boosting
 
@@ -42,10 +42,10 @@ The hyperparameters to optimize are number of estimators with range [10, 500), l
 
 The best hyperparameters are shown in the table below.
 
-| Category | 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | dim reducer | n_component | scaler|
+| Category | 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | min_samples_split | min_samples_leaf | dim reducer | n_component | scaler|
 |---------|---------|-------------|------------------|-------------|----------|----------|----------|
-| Tuned pipeline | 0.5787 | 152 | 0.3664 | 12 | PCA | 11 | PowerTransformer |
-| Default model only | 0.5616 | 100 | 0.1 | 3 | NA | NA | NA |
+| Tuned pipeline | 0.5759 | 198 | 0.1733 | 7 | 9 | 11 | PCA | 9 | StandardScaler |
+| Default model only | 0.5616 | 100 | 0.1 | 3 | 2 | 1 | NA | NA | NA |
 
 ### Support Vector Machine
 
@@ -71,4 +71,8 @@ The figure above shows the performance (convergence) of the three models with di
 plateau near 20 - 40 iterations before dropping, which means all models have explored regions with higher accuracy and there is a good balance between exploration and exploitation.
 
 From three tables above, we can observe that the tuned random forest pipeline's performance is slightly worse than that of the default model-only pipeline. While the performance for
-the tuned gradient boosting and SVM pipelines are better than that of the default model-only pipelines. This indicates that the hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model. The is likely due to that many hyperparameters in random forest are correlating with each other. For example, in the random forest model, max_features and max_depth are correlated with each other. The default value for max_features is `sqrt`, which is already an optimal solution for many cases. Without considering the internal correlation between each hyperparameters, the HPO process might be less effective. The gradient boosting and SVM models have more independent hyperparameters, which makes the HPO process more effective and an improvement in the accuracy.
+the tuned gradient boosting and SVM pipelines are better than that of the default model-only pipelines. This indicates that the hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model. 
+
+Revision: I think the tunned pipeline for random forest is worst than the default model is likely due to many I expanded the hyperparameter search space for the Random forest model and the SVC to include `min_samples_split` and `min_samples_leaf`. I also triple the search iterations. However, the results are still very similar. The accuracy of tunned random forest pipeline is still worse than that of the default model-only pipeline. This indicates that the hyperparameter optimization process is not effective for the random forest model. The reason is because the search iterations might not high enough to find the globally best hyperparameters. The plateau in the performance plots show that at least the HPO process reached some locally optimal parameters. The hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model.
+
+To improve the performance of the random forest model, I would increase the search iterations further and search space for the hyperparameters. I would also use a different hyperparameter optimization algorithm such as Bayesian optimization (BOHB).

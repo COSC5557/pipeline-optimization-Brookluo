@@ -1,2 +1,2 @@
 C,kernel,degree,n_comp,dim_red,scaler
-7.1000000000000005,rbf,6,17,ica,std
+9.5,rbf,4,3,ica,mx

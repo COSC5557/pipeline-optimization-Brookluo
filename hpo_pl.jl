@@ -38,8 +38,10 @@ Y_test = test[:, end] |> Vector
 
 # Define the model
 #### Learners
-rf = hp -> SKLearner("RandomForestClassifier", n_estimators=hp[1], max_depth=hp[2], max_features=hp[3], random_state=0)
-gb = hp -> SKLearner("GradientBoostingClassifier", n_estimators=Int(hp[1]), learning_rate=hp[2], max_depth=Int(hp[3]), random_state=0)
+rf = hp -> SKLearner("RandomForestClassifier", n_estimators=hp[1], max_depth=hp[2], max_features=hp[3], min_samples_split=Int(hp[4]),
+                        min_samples_leaf=Int(hp[5]), random_state=0)
+gb = hp -> SKLearner("GradientBoostingClassifier", n_estimators=Int(hp[1]), learning_rate=hp[2], max_depth=Int(hp[3]), min_samples_split=Int(hp[4]),
+                        min_samples_leaf=Int(hp[5]), random_state=0)
 svc = hp -> SKLearner("SVC", C=hp[1], kernel=hp[2], degree=hp[3], random_state=0)
 
 #### Decomposition
@@ -136,34 +138,35 @@ end
 println("Random Forest")
 # Define hypterparameter function
 HPO_rf = (hp, X, Y) -> HPOLearner(rf(hp), X, Y)
-x0 = [100, 10, 10]
 # Hyperparameter bounds for n_estimators, max_depth, max_feature
-lower = [10, 1, 1]
-upper = [300, 30, 30]
+n_est_range = 10:500
+max_depth_range = 1:30
+max_feature_range = 1:30
+min_samples_split_range = 2:50
+min_samples_leaf_range = 1:50
 
 # use Hyperband for optimization
 println("Hyperband")
 rf_hohb = @time @hyperopt for i = 50,
-    sampler = Hyperband(R=50, η=3, inner=RandomSampler(rng)),
-    n_est = lower[1]:upper[1],
-    max_depth = lower[2]:upper[2],
-    max_feature = lower[3]:upper[3],
+    sampler = Hyperband(R=100, η=3, inner=RandomSampler(rng)),
+    n_est = n_est_range,
+    max_depth = max_depth_range,
+    max_feature = max_feature_range,
+    min_samples_split = min_samples_split_range,
+    min_samples_leaf = min_samples_leaf_range,
     n_comp = comp_range,
     dim_red = dim_reds,
     scaler = scalers
 
     if state !== nothing
-        n_est, max_depth, max_feature, n_comp, dim_red, scaler = state
+        n_est, max_depth, max_feature, min_samples_split, min_samples_leaf, n_comp, dim_red, scaler = state
     end
-    # println(i, "\t", n_est, "\t", max_depth, "\t", max_feature, "   \n")
-    # res = Optim.optimize(x -> HPO_rf(round.(Int, x)), [n_est, max_depth, max_feature],
-    #       float(lower), float(upper), NelderMead(), Optim.Options(f_calls_limit=round(Int, i)+1))
-    # @show Optim.minimum(res), round.(Int, Optim.minimizer(res))
     X_train_trans, X_test_trans = preprocessing(Dict(:dim_red => dim_reds_dict[dim_red](n_comp), :scaler => scalers_dict[scaler]), X_train, Y_train)
-    HPO_rf([n_est, max_depth, max_feature], X_train_trans, Y_train), [n_est, max_depth, max_feature, n_comp, dim_red, scaler]
+    HPO_rf([n_est, max_depth, max_feature, min_samples_split, min_samples_leaf], X_train_trans, Y_train), [n_est, max_depth, max_feature, min_samples_split, min_samples_leaf, n_comp, dim_red, scaler]
 end
 
-rf_params = ["accuracy", "n_estimators", "max_depth", "max_feature", "n_comp", "dim_red", "scaler"]
+rf_params = ["accuracy", "n_estimators", "max_depth", "max_feature", "min_samples_split", "min_samples_leaf",
+            "n_comp", "dim_red", "scaler"]
 writeToCSV("./rf_hyperband_rs.csv", rf_hohb, rf_params)
 
 # analyzePerf(rf, "./rf/", ["accuracy", "n_estimators", "max_depth", "max_feature"],
@@ -182,22 +185,24 @@ max_depth_range = 1:30
 # use Hyperband for optimization
 println("Hyperband")
 gb_hohb = @time @hyperopt for i = 50,
-    sampler = Hyperband(R=50, η=3, inner=RandomSampler(rng)),
+    sampler = Hyperband(R=100, η=3, inner=RandomSampler(rng)),
     n_est = n_est_range,
     lr = lr_range,
     max_depth = max_depth_range,
+    min_samples_split = min_samples_split_range,
+    min_samples_leaf = min_samples_leaf_range,
     n_comp = comp_range,
     dim_red = dim_reds,
     scaler = scalers
 
     if state !== nothing
-        n_est, lr, max_depth, n_comp, dim_red, scaler = state
+        n_est, lr, max_depth, min_samples_split, min_samples_leaf, n_comp, dim_red, scaler = state
     end
     X_train_trans, X_test_trans = preprocessing(Dict(:dim_red => dim_reds_dict[dim_red](n_comp), :scaler => scalers_dict[scaler]), X_train, Y_train)
-    @show HPO_gb([n_est, lr, max_depth], X_train_trans, Y_train), [n_est, lr, max_depth, n_comp, dim_red, scaler]
+    @show HPO_gb([n_est, lr, max_depth, min_samples_split, min_samples_leaf], X_train_trans, Y_train), [n_est, lr, max_depth, min_samples_split, min_samples_leaf, n_comp, dim_red, scaler]
 end
 
-gb_params = ["accuracy", "n_estimators", "learning_rate", "max_depth", "n_comp", "dim_red", "scaler"]
+gb_params = ["accuracy", "n_estimators", "learning_rate", "max_depth", "min_samples_split", "min_samples_leaf", "n_comp", "dim_red", "scaler"]
 writeToCSV("./gb_hyperband_rs.csv", gb_hohb, gb_params)
 
 # For SVC
@@ -211,7 +216,7 @@ degree_range = 1:10
 # use Hyperband for optimization
 println("Hyperband")
 svc_hohb = @time @hyperopt for i = 50,
-    sampler = Hyperband(R=50, η=3, inner=RandomSampler(rng)),
+    sampler = Hyperband(R=100, η=3, inner=RandomSampler(rng)),
     C = C_range,
     kernel = kernel_range,
     degree = degree_range,
@@ -236,7 +241,7 @@ writeToCSV("./svm_hyperband_rs.csv", svc_hohb, svc_params)
 # Compare performance for all models
 df_rf = CSV.read("./rf_hyperband_rs.csv", DataFrame)
 df_gb = CSV.read("./gb_hyperband_rs.csv", DataFrame)
-df_svm = CSV.read("./svm_hyperband_rs.csv", DataFrame)
+df_svm = CSV.read("./svc_hyperband_rs.csv", DataFrame)
 p = boxplot(["Random Forest"], df_rf.accuracy, ylabel="Accuracy", legend=false)
 boxplot!(p, ["Gradient Boosting"], df_gb.accuracy, ylabel="Accuracy", legend=false)
 boxplot!(p, ["SVM"], df_svm.accuracy, ylabel="Accuracy", legend=false)

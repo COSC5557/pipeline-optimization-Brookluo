@@ -1,2 +1,2 @@
-n_estimators,learning_rate,max_depth,n_comp,dim_red,scaler
-152,0.3663636363636364,12,11,pca,pt
+n_estimators,learning_rate,max_depth,min_samples_split,min_samples_leaf,n_comp,dim_red,scaler
+198,0.17333333333333334,7,9,11,9,pca,std
