@@ -4,7 +4,7 @@ Pkg.activate(".")
 
 using CSV
 using Plots
-using MLDataUtils
+# using MLDataUtils
 
 # using Distributed
 using DataFrames
@@ -20,19 +20,37 @@ using Hyperopt
 using Plots
 using StatsPlots
 
+using MLUtils
+using Imbalance
 
 # Load the data
 df_red = CSV.read("winequality-white.csv", DataFrame)
 # names = CSV.read("winequality.names", DataFrame)
 
+# oversample(df_red[!, 1:end-1], df_red[!, end])
+
+# a = df_red[!, end]
+# [element => count(==(element),a) for element in sort(unique(a)) ]
+checkbalance(df_red[!, end])
 # split the data into training and testing
 # Random.seed!(42)
 rng = MersenneTwister(1234)
-train, test = splitobs(shuffleobs(df_red, rng=rng), at=0.7)
+Xover, yover = smote(df_red[!, 1:end-1], df_red[!, end]; k=5,
+                ratios=Dict(9 => 0.4,
+                            3 => 0.4,
+                            4 => 0.4,
+                            8 => 0.4,
+                            7 => 0.4,
+                            5 => 0.663,
+                            6 => 1.0), rng=rng)
+checkbalance(yover)
+4train, test = splitobs(hcat(Matrix(Xover), yover)', at=0.7, shuffle=true)
+train = DataFrame(train', :auto)
+test = DataFrame(test', :auto)
 X_train = train[:, 1:end-1]
-Y_train = train[:, end] |> Vector
+Y_train = Int.(train[:, end]) |> Vector
 X_test = test[:, 1:end-1]
-Y_test = test[:, end] |> Vector
+Y_test = Int.(test[:, end]) |> Vector
 # head(x)=first(x,5)
 # head(df_red)
 
@@ -42,7 +60,7 @@ rf = hp -> SKLearner("RandomForestClassifier", n_estimators=hp[1], max_depth=hp[
                         min_samples_leaf=Int(hp[5]), random_state=0)
 gb = hp -> SKLearner("GradientBoostingClassifier", n_estimators=Int(hp[1]), learning_rate=hp[2], max_depth=Int(hp[3]), min_samples_split=Int(hp[4]),
                         min_samples_leaf=Int(hp[5]), random_state=0)
-svc = hp -> SKLearner("SVC", C=hp[1], kernel=hp[2], degree=hp[3], random_state=0)
+svc = hp -> SKLearner("SVC", C=hp[1], kernel=String(hp[2]), degree=hp[3], random_state=0)
 
 #### Decomposition
 pca = n_components -> SKPreprocessor("PCA", Dict(:n_components => n_components, :random_state => 0))
@@ -185,7 +203,7 @@ max_depth_range = 1:30
 # use Hyperband for optimization
 println("Hyperband")
 gb_hohb = @time @hyperopt for i = 50,
-    sampler = Hyperband(R=100, η=3, inner=RandomSampler(rng)),
+    sampler = Hyperband(R=50, η=3, inner=RandomSampler(rng)),
     n_est = n_est_range,
     lr = lr_range,
     max_depth = max_depth_range,
@@ -216,7 +234,7 @@ degree_range = 1:10
 # use Hyperband for optimization
 println("Hyperband")
 svc_hohb = @time @hyperopt for i = 50,
-    sampler = Hyperband(R=100, η=3, inner=RandomSampler(rng)),
+    sampler = Hyperband(R=50, η=3, inner=RandomSampler(rng)),
     C = C_range,
     kernel = kernel_range,
     degree = degree_range,
@@ -235,7 +253,7 @@ end
 # the limit of the package
 
 svc_params = ["accuracy", "C", "kernel", "degree", "n_comp", "dim_red", "scaler"]
-writeToCSV("./svm_hyperband_rs.csv", svc_hohb, svc_params)
+writeToCSV("./svc_hyperband_rs.csv", svc_hohb, svc_params)
 
 
 # Compare performance for all models
@@ -247,22 +265,36 @@ boxplot!(p, ["Gradient Boosting"], df_gb.accuracy, ylabel="Accuracy", legend=fal
 boxplot!(p, ["SVM"], df_svm.accuracy, ylabel="Accuracy", legend=false)
 savefig(p, "all_hbrs_perf_boxplot.png")
 
+# Compare performance for all models
+# rf_ho = CSV.read("./rf_all_ho_params.csv", DataFrame)
+# gb_ho = CSV.read("./gb_hyperband_rs.csv", DataFrame)
+# svm = CSV.read("./svc_hyperband_rs.csv", DataFrame)
 
 perfplot = plot()
-for (ho, params, name, model) in zip([rf_hohb, gb_hohb, svc_hohb],
+for (df, params, name, model) in zip([df_rf, df_gb, df_svm],
                                 [rf_params, gb_params, svc_params],
-                                ["rf_", "gb_", "svc_"],
+                                ["rf_", "gb_", "svc_",],
                                 [rf, gb, svc])
-    X_train_trans, X_test_trans = preprocessing(Dict(:dim_red => dim_reds_dict[ho.minimizer[end-1]](ho.minimizer[end-2]), :scaler => scalers_dict[ho.minimizer[end]]),
-                                                X_train, Y_train)
+    ho_min = df[argmax(df.accuracy), :]
+    ho_min_arr = Array(ho_min)
+    # print(ho_min)
+    X_train_trans, X_test_trans = preprocessing(
+        Dict(:dim_red => dim_reds_dict[Symbol(ho_min[end-1])](ho_min[end-2]),
+        :scaler => scalers_dict[Symbol(ho_min[end])]),
+        X_train, Y_train
+    )
     Random.seed!(0)
-    cv_res = crossvalidate(model(ho.minimizer[1:end-3]), X_test_trans, Y_test, "accuracy_score", nfolds=5, verbose=true)
-    writeTestResult("./" * name, params, ["hyperband_rs"], [ho], [cv_res])
-    scores = [t[1] for t in ho.results]
+    cv_res = crossvalidate(model(ho_min_arr[2:end-3]), X_test_trans, Y_test, "accuracy_score", nfolds=5, verbose=true)
+    # writeTestResult("./" * name, params, ["hyperband_rs"], [ho], [cv_res])
+    dir = "./" * name
+    CSV.write(dir * "all_cv.csv", DataFrame([cv_res]))
+    CSV.write(dir * "all_ho_params.csv", DataFrame(ho_min[2:end]))
+    scores = df.accuracy
     # scores = scores[.!isnan.(scores)]
-    plot!(perfplot, -scores, label=name[1:end-1], ylabel="Accuracy", legend=true) 
+    plot!(perfplot, scores, label=name[1:end-1], ylabel="Accuracy", legend=true) 
 end
 plot!(perfplot, legend=true, xlabel="Iterations")
+plot!(perfplot, xlims=(0, 100))
 savefig(perfplot, "perfplot.png")
 
 default_rf = SKLearner("RandomForestClassifier", random_state=0)

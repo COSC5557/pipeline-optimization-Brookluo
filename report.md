@@ -6,7 +6,15 @@ This report is a summary of the pipeline optimization process for the models use
 
 ## Dataset description
 
-The white wine dataset contains 4898 observations with 12 columns in each observation. There is no missing data in the dataset. The target variable is `quality`, which is an integer between 3 and 9. The rest of the columns are features of the wine. I consider all feature columns as continuous numerical variables. The dataset is divided into 70% training and 30% testing.
+The white wine dataset contains 4898 observations with 12 columns in each observation. There is no missing data in the dataset. The target variable is `quality`, which is an integer between 3 and 9. The rest of the columns are features of the wine. I consider all feature columns as continuous numerical variables. Due to the imbalanced dataset, I use SMOTE to balance the dataset. I have  The dataset is divided into 70% training and 30% testing.
+
+Before SMOTE, the distribution of the quality levels is shown below.
+
+![quality distribution before SMOTE](./before_bal.png)
+
+After SMOTE, the distribution of the quality levels is shown below.
+
+![quality distribution after SMOTE](./after_bal.png)
 
 ## Experiment setup
 
@@ -32,9 +40,9 @@ The hyperparameter optimization is performed using the `Hyperopt` package using 
 The hyperparameters to optimize are number of estimators with range [10, 500), max tree depth [1, 30), max number of features [1, 30), min samples split with range [2, 50) and min samples leaf range [1, 50). The best hyperparameters are shown in the table below.
 
 | Category |5-fold test CV mean accuracy | n_estimators | max_depth | max_features | min_samples_split | min_samples_leaf | dim reducer | n_component | scaler|
-|---------|-------------|------------------|-------------|-------------|-------------||-------------|-------------|----------|----------|
-| Tuned pipeline |  0.5916 | 110 | 22 | 10 | 9 | 1 | PCA | 9 | PowerTransformer |
-| Default model only | 0.6133 | 100 | None | sqrt | None | 0.0 | NA | NA | NA |
+|---------|-------------|------------------|-------------|-------------|-------------|-------------|-------------|----------|----------|
+| Tuned pipeline |  0.6754 | 240 | 21 | 3 | 3 | 1 | PCA | 18 | MinMaxScaler |
+| Default model only | 0.6878 | 100 | None | sqrt | None | 0.0 | NA | NA | NA |
 
 ### Gradient Boosting
 
@@ -43,9 +51,9 @@ The hyperparameters to optimize are number of estimators with range [10, 500), l
 The best hyperparameters are shown in the table below.
 
 | Category | 5-fold test CV mean accuracy | n_estimators | learning_rate | max_depth | min_samples_split | min_samples_leaf | dim reducer | n_component | scaler|
-|---------|---------|-------------|------------------|-------------|----------|----------|----------|
-| Tuned pipeline | 0.5759 | 198 | 0.1733 | 7 | 9 | 11 | PCA | 9 | StandardScaler |
-| Default model only | 0.5616 | 100 | 0.1 | 3 | 2 | 1 | NA | NA | NA |
+|---------|---------|-------------|------------------|-------------|----------|----------|----------|----------|----------|
+| Tuned pipeline | 0.6559 | 384 | 0.1387 | 23 | 11 | 6 | ICA | 4 | MinMaxScaler |
+| Default model only | 0.6253 | 100 | 0.1 | 3 | 2 | 1 | NA | NA | NA |
 
 ### Support Vector Machine
 
@@ -53,8 +61,8 @@ The hyperparameters to optimize are C (regularization) with range [0.1, 10), ker
 
 | Category | 5-fold test CV mean accuracy | C | kernel | gamma | dim reducer | n_component | scaler|
 |---------|---------|-------------|------------------|-------------|----------|----------|----------|
-| Tuned pipeline |0.5589 | 7.1 | rbf | 6 | ICA | 17 | StandardScaler |
-| Default model only | 0.4541 | 1 | rbf | 'scale' | NA | NA | NA |
+| Tuned pipeline | 0.6576 | 7.5 | rbf | 6 | ICA | 6 | MinMaxScaler |
+| Default model only | 0.3048 | 1 | rbf | 'scale' | NA | NA | NA |
 
 
 ## Conclusion
@@ -63,16 +71,17 @@ The boxplot is shown below to compare the performance of the three models with d
 
 ![boxplot](./all_hbrs_perf_boxplot.png)
 
-The figure above shows that the random forest has the best overall performance among the three models. It has highest average accuracy but there are some outliers. The gradient boosting has the second best performance and with the similar dispersion as the random forest., and the SVM has the worst performance. The SVM model has the highest dispersion and lowest average accuracy. The results on the test dataset also agree with this trend. The pipelines for random forest and gradient boosting both reply on PCA as dimension reducer and power transformation as scaler. Among six scalers, only power transformation and standard scaler are selected and SVM with standard scaler has much higher dispersion than the other two with power transformation. This would mean that many features in the dataset are not normally distributed and the power transformation is used to transform the data to be more Gaussian-like.
+The figure above shows that the gradient boosting has the best overall performance among the three models. It has highest average accuracy but there are some outliers. The random forest has the second best performance. The SVM has the worst performance. The SVM model has the highest dispersion and lowest average accuracy. The results on the test dataset also agree with this trend. 
 
 ![perfplot](./perfplot.png)
 
-The figure above shows the performance (convergence) of the three models with different pipelines in the tuning process. We can observe that all three models reach
-plateau near 20 - 40 iterations before dropping, which means all models have explored regions with higher accuracy and there is a good balance between exploration and exploitation.
-
+The figure above shows the performance (convergence) of the three models with different pipelines in the tuning process. We can observe that gradient boosting has a very consistent good performance while random forest and SVC have a similar oscillating accuracy.
 From three tables above, we can observe that the tuned random forest pipeline's performance is slightly worse than that of the default model-only pipeline. While the performance for
-the tuned gradient boosting and SVM pipelines are better than that of the default model-only pipelines. This indicates that the hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model. 
+the tuned gradient boosting and SVM pipelines are much better than that of the default model-only pipelines. This indicates that the hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model. 
 
-Revision: I think the tunned pipeline for random forest is worst than the default model is likely due to many I expanded the hyperparameter search space for the Random forest model and the SVC to include `min_samples_split` and `min_samples_leaf`. I also triple the search iterations. However, the results are still very similar. The accuracy of tunned random forest pipeline is still worse than that of the default model-only pipeline. This indicates that the hyperparameter optimization process is not effective for the random forest model. The reason is because the search iterations might not high enough to find the globally best hyperparameters. The plateau in the performance plots show that at least the HPO process reached some locally optimal parameters. The hyperparameter optimization process is effective for gradient boosting and SVM models but not for the random forest model.
+The RF classifier pipeline were actually tuned for more than 200 iterations,
+twice as long as
+the other models, but the tuned RF pipeline still performed worse than the default model-only pipeline. From the ablation study for my wildcard project, I found that the default RF classifier had a relatively good performance for many datasets, which means
+it is very generalizable. This might be the reason why the tuned RF pipeline performed worse than the default model-only pipeline. The hyperparameter optimization process might not be effective for the RF model. The reason is because the search iterations might not high enough to find the globally best hyperparameters. The plateau in the performance plots show that at least the HPO process reached some locally optimal parameters.
 
 To improve the performance of the random forest model, I would increase the search iterations further and search space for the hyperparameters. I would also use a different hyperparameter optimization algorithm such as Bayesian optimization (BOHB).
